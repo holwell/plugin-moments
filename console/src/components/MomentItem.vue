@@ -130,7 +130,7 @@ const handleApproved = async () => {
                     content: formatDatetime(previewMoment.spec.releaseTime),
                   }"
                 >
-                  {{ relativeTimeTo(previewMoment.spec.releaseTime) }}
+                    {{ relativeTimeTo(previewMoment.spec.releaseTime) + " | " + formatDatetime(previewMoment.spec.releaseTime).slice(0, -3) + "" }}
                 </span>
               </div>
               <VDropdown
