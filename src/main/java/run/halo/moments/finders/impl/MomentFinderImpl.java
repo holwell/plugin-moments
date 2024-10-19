@@ -51,6 +51,10 @@ public class MomentFinderImpl implements MomentFinder {
         equal("spec.approved", Boolean.TRUE.toString())
     );
 
+    public static final Predicate<Moment> FIXED_PREDICATE_INCLUDE_PRIVATE = moment -> moment.getSpec().getApproved() == Boolean.TRUE;
+
+    public static final Query FIXED_QUERY_INCLUDE_PRIVATE = equal("spec.approved", Boolean.TRUE.toString());
+
     private final ReactiveExtensionClient client;
 
     @Override
@@ -65,7 +69,7 @@ public class MomentFinderImpl implements MomentFinder {
     @Override
     public Mono<ListResult<MomentVo>> list(Integer page, Integer size) {
         var pageRequest = PageRequestImpl.of(pageNullSafe(page), sizeNullSafe(size), defaultSort());
-        return pageMoment(null, pageRequest);
+        return pageMoment(null, pageRequest, false);
     }
 
     static Sort defaultSort() {
@@ -89,9 +93,12 @@ public class MomentFinderImpl implements MomentFinder {
     }
 
     @Override
-    public Flux<MomentTagVo> listAllTags() {
+    public Flux<MomentTagVo> listAllTags(Boolean includePrivate) {
         var listOptions = new ListOptions();
         var query = and(all("spec.tags"), FIXED_QUERY);
+        if (includePrivate) {
+            query = and(all("spec.tags"), FIXED_QUERY_INCLUDE_PRIVATE);
+        }
         listOptions.setFieldSelector(FieldSelector.of(query));
         return client.listAll(Moment.class, listOptions, defaultSort())
             .flatMapIterable(moment -> {
@@ -118,19 +125,22 @@ public class MomentFinderImpl implements MomentFinder {
     }
 
     @Override
-    public Mono<ListResult<MomentVo>> listByTag(int pageNum, Integer pageSize, String tagName) {
+    public Mono<ListResult<MomentVo>> listByTag(int pageNum, Integer pageSize, String tagName, Boolean includePrivate) {
         var query = all();
         if (StringUtils.isNoneBlank(tagName)) {
             query = and(query, equal("spec.tags", tagName));
         }
         var pageRequest =
             PageRequestImpl.of(pageNullSafe(pageNum), sizeNullSafe(pageSize), defaultSort());
-        return pageMoment(FieldSelector.of(query), pageRequest);
+        return pageMoment(FieldSelector.of(query), pageRequest, includePrivate);
     }
 
-    private Mono<ListResult<MomentVo>> pageMoment(FieldSelector fieldSelector, PageRequest page) {
+    private Mono<ListResult<MomentVo>> pageMoment(FieldSelector fieldSelector, PageRequest page, Boolean includePrivate) {
         var listOptions = new ListOptions();
         var query = FIXED_QUERY;
+        if (includePrivate) {
+            query = FIXED_QUERY_INCLUDE_PRIVATE;
+        }
         if (fieldSelector != null) {
             query = and(query, fieldSelector.query());
         }

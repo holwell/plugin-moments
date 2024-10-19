@@ -127,10 +127,12 @@ public class MomentRouter {
 
     private HandlerFunction<ServerResponse> handlerFunction() {
         return request -> ServerResponse.ok().render("moments",
-            Map.of("moments", momentList(request),
+            Map.of("moments", momentList(request, false),
                 ModelConst.TEMPLATE_ID, "moments",
-                "tags", momentFinder.listAllTags(),
-                "title", getMomentTitle()
+                "tags", momentFinder.listAllTags(false),
+                "title", getMomentTitle(),
+                "momentsAll", momentList(request, true),
+                "tagsAll", momentFinder.listAllTags(true)
             )
         );
     }
@@ -141,7 +143,7 @@ public class MomentRouter {
             .defaultIfEmpty("瞬间");
     }
 
-    private Mono<UrlContextListResult<MomentVo>> momentList(ServerRequest request) {
+    private Mono<UrlContextListResult<MomentVo>> momentList(ServerRequest request, Boolean includePrivate) {
         String path = request.path();
         String tagVal = request.queryParam(TAG_PARAM)
             .filter(StringUtils::isNotBlank)
@@ -151,7 +153,7 @@ public class MomentRouter {
         return this.settingFetcher.get("base")
             .map(item -> item.get("pageSize").asInt(10))
             .defaultIfEmpty(10)
-            .flatMap(pageSize -> momentFinder.listByTag(pageNum, pageSize, tag)
+            .flatMap(pageSize -> momentFinder.listByTag(pageNum, pageSize, tag, includePrivate)
                 .map(list -> new UrlContextListResult.Builder<MomentVo>()
                     .listResult(list)
                     .nextUrl(appendTagParamIfPresent(

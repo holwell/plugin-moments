@@ -41,7 +41,7 @@ public interface MomentFinder {
 
     Mono<MomentVo> get(String momentName);
 
-    Flux<MomentTagVo> listAllTags();
+    Flux<MomentTagVo> listAllTags(Boolean includePrivate);
 
-    Mono<ListResult<MomentVo>> listByTag(int pageNum, Integer pageSize, String tagName);
+    Mono<ListResult<MomentVo>> listByTag(int pageNum, Integer pageSize, String tagName, Boolean includePrivate);
 }
