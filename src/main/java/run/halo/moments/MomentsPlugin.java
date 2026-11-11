@@ -44,6 +44,17 @@ public class MomentsPlugin extends BasePlugin {
                 }));
             indexSpecs.add(IndexSpecs.<Moment, Boolean>single("spec.approved", Boolean.class)
                 .indexFunc(moment -> moment.getSpec().getApproved()));
+            // 位置的两个字段各自建索引：地区用于「这个城市的所有瞬间」，
+            // 地点用于「这一个地方的所有瞬间」。两者都取不到时返回 null，
+            // Halo 的索引会跳过 null 值，所以没填位置的瞬间不会占用索引项。
+            indexSpecs.add(IndexSpecs.<Moment, String>single("spec.location.region", String.class)
+                .indexFunc(moment -> Optional.ofNullable(moment.getSpec().getLocation())
+                    .map(Moment.MomentLocation::getRegion)
+                    .orElse(null)));
+            indexSpecs.add(IndexSpecs.<Moment, String>single("spec.location.place", String.class)
+                .indexFunc(moment -> Optional.ofNullable(moment.getSpec().getLocation())
+                    .map(Moment.MomentLocation::getPlace)
+                    .orElse(null)));
             indexSpecs.add(
                 IndexSpecs.<Moment, Boolean>single(
                         Moment.REQUIRE_SYNC_ON_STARTUP_INDEX_NAME, Boolean.class)

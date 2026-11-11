@@ -48,6 +48,20 @@ public class MomentPublicQuery extends SortableRequest {
         return StringUtils.defaultIfBlank(queryParams.getFirst("tag"), null);
     }
 
+    @Schema(description = "Region of the moment location, e.g. a city.")
+    public String getRegion() {
+        return StringUtils.defaultIfBlank(queryParams.getFirst("region"), null);
+    }
+
+    /**
+     * 地点单独查询时可能跨城市重名，所以主题端点「地点」时会把 region 一起带上；
+     * 只填了地点、没填地区的瞬间也能靠它单独筛到。
+     */
+    @Schema(description = "Specific place name of the moment location.")
+    public String getPlace() {
+        return StringUtils.defaultIfBlank(queryParams.getFirst("place"), null);
+    }
+
     @Schema
     public Instant getStartDate() {
         String startDate = queryParams.getFirst("startDate");
@@ -74,6 +88,12 @@ public class MomentPublicQuery extends SortableRequest {
         }
         if (StringUtils.isNotBlank(getTag())) {
             query = and(query, equal("spec.tags", getTag()));
+        }
+        if (StringUtils.isNotBlank(getRegion())) {
+            query = and(query, equal("spec.location.region", getRegion()));
+        }
+        if (StringUtils.isNotBlank(getPlace())) {
+            query = and(query, equal("spec.location.place", getPlace()));
         }
 
         if (getStartDate() != null) {
@@ -115,6 +135,18 @@ public class MomentPublicQuery extends SortableRequest {
                 .in(ParameterIn.QUERY)
                 .name("tag")
                 .description("Moment tag.")
+                .implementation(String.class)
+                .required(false))
+            .parameter(parameterBuilder()
+                .in(ParameterIn.QUERY)
+                .name("region")
+                .description("Region of the moment location.")
+                .implementation(String.class)
+                .required(false))
+            .parameter(parameterBuilder()
+                .in(ParameterIn.QUERY)
+                .name("place")
+                .description("Specific place name of the moment location.")
                 .implementation(String.class)
                 .required(false))
             .parameter(parameterBuilder()

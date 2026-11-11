@@ -162,6 +162,8 @@ public class MomentFinderImpl implements MomentFinder {
         private Integer size;
         private String tagName;
         private String owner;
+        private String region;
+        private String place;
         private List<String> sort;
 
         public ListOptions toListOptions() {
@@ -171,6 +173,12 @@ public class MomentFinderImpl implements MomentFinder {
             }
             if (StringUtils.isNotBlank(owner)) {
                 builder.andQuery(equal("spec.owner", owner));
+            }
+            if (StringUtils.isNotBlank(region)) {
+                builder.andQuery(equal("spec.location.region", region));
+            }
+            if (StringUtils.isNotBlank(place)) {
+                builder.andQuery(equal("spec.location.place", place));
             }
             return builder.build();
         }

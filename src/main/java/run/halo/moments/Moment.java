@@ -45,10 +45,34 @@ public class Moment extends AbstractExtension {
         @Schema(description = "Tags of the moment")
         private Set<String> tags;
 
+        @Schema(description = "Location of the moment")
+        private MomentLocation location;
+
         @Schema(defaultValue = "false")
         private Boolean approved;
 
         private Instant approvedTime;
+    }
+
+    /**
+     * 瞬间的所在地。地区与地点分开存，是因为它们承担不同的筛选职责：
+     * 点「杭州市」要能列出这个城市下的所有瞬间，点具体地点只列那一个地方。
+     *
+     * <p>{@code visible} 为 false 时主题端不渲染位置，也不参与筛选——
+     * 位置是否对外展示是作者的隐私开关，不该因为写了位置就自动公开。
+     */
+    @Data
+    @Schema(name = "MomentLocation")
+    public static class MomentLocation {
+
+        @Schema(description = "Region of the location, e.g. a city")
+        private String region;
+
+        @Schema(description = "Specific place name under the region")
+        private String place;
+
+        @Schema(description = "Whether the location is shown publicly", defaultValue = "true")
+        private Boolean visible;
     }
 
     @Data

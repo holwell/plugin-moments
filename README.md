@@ -4,6 +4,55 @@ Halo 2.0 的瞬间管理插件，提供一个轻量级的内容发布功能，�
 
 ![Preview](./images/plugin-moments-preview.png)
 
+> 本仓库是 [halo-sigs/plugin-moments](https://github.com/halo-sigs/plugin-moments) 的 fork，在官方版基础上增加了**瞬间位置**。下面「本 fork 新增」与「更新日志」是唯一的两处差异说明，再往后的功能特性、安装、主题适配等章节沿用官方文档。
+
+## 本 fork 新增：瞬间位置
+
+官方版没有位置字段。fork 在 `spec` 上加了 `location`，**地区与地点分开存**，因为两者承担不同的筛选职责：点「杭州市」要列出这个城市下的所有瞬间，点具体地点只列那一个地方。
+
+```yaml
+spec:
+  location:
+    region: 杭州市         # 地区，如城市名，可空
+    place: 西湖区某公司     # 具体地点，可空
+    visible: false         # 是否对外展示，默认私密
+```
+
+- `visible` 为 `false` 时，主题端不渲染位置、也不给筛选入口；但数据仍在索引里，**查询接口本身不拦**——要严格隔离得在查询层再过滤一次。
+- `region` 与 `place` 都空时不写 `location`，不产生一堆空对象。
+- 只填 `place` 不填 `region` 也能单独筛到（地点可能跨城市重名，所以主题端点「地点」时会把 `region` 一起带上，走的是精确匹配）。
+
+改动集中在四个文件：
+
+| 文件 | 改动 |
+| --- | --- |
+| `Moment.java` | `MomentSpec` 加 `location`，新增内部类 `MomentLocation { region, place, visible }` |
+| `MomentsPlugin.java` | 给 `spec.location.region` / `spec.location.place` 建索引 |
+| `MomentPublicQuery.java` | 公共 REST API 支持 `?region=` / `?place=` |
+| `finders/impl/MomentFinderImpl.java` | `MomentQuery`（Finder 的 Map 版本）支持 `region` / `place` |
+
+**为什么 Finder 那层不能省**：`momentFinder.list(Map)` 只把 Map 映射到 `MomentFinderImpl.MomentQuery`，光在 `MomentPublicQuery` 里加字段，主题模板仍然查不到——模板走的是 Finder，不是 HTTP API。两层要一起改。
+
+查询示例：
+
+```bash
+# 只看某个城市
+curl "https://example.com/apis/api.moment.halo.run/v1alpha1/moments?region=杭州市"
+
+# 精确到某个地点
+curl "https://example.com/apis/api.moment.halo.run/v1alpha1/moments?region=杭州市&place=西湖区某公司"
+```
+
+新增了索引字段，装完后如果按位置查不到数据，去控制台「系统 → 索引」对 `Moment` 触发一次重建。
+
+## 更新日志
+
+### 1.0.1-SNAPSHOT（fork）· 2026-11-12
+
+- 新增 `spec.location`：`region` / `place` / `visible` 三个字段
+- 新增 `?region=` / `?place=` 查询参数，公共 REST API 与 Finder API 同步支持
+- 新增 `spec.location.region` / `spec.location.place` 索引，两者都取不到时返回 `null`，Halo 的索引会跳过 `null`，没填位置的瞬间不占索引项
+
 ## 功能特性
 
 - 支持发布图文、视频、音频等多媒体内容
