@@ -16,6 +16,7 @@ import run.halo.moments.exception.NotFoundException;
 import run.halo.moments.finders.MomentFinder;
 import run.halo.moments.finders.MomentPublicQueryService;
 import run.halo.moments.vo.MomentVo;
+import run.halo.moments.vo.ViewScopeVo;
 
 import static org.springdoc.core.fn.builders.apiresponse.Builder.responseBuilder;
 import static org.springdoc.core.fn.builders.parameter.Builder.parameterBuilder;
@@ -31,6 +32,8 @@ public class MomentQueryEndpoint implements CustomEndpoint {
     private final MomentFinder momentFinder;
 
     private final MomentPublicQueryService momentPublicQueryService;
+
+    private final AnonymousViewScopeService viewScopeService;
 
     @Override
     public RouterFunction<ServerResponse> endpoint() {
@@ -61,7 +64,23 @@ public class MomentQueryEndpoint implements CustomEndpoint {
                         .implementation(MomentVo.class)
                     )
             )
+            .GET("view-scope", this::getViewScope,
+                builder -> builder.operationId("queryMomentViewScope")
+                    .description("Gets the visible scope of moments for the current requester.")
+                    .tag(tag)
+                    .response(responseBuilder()
+                        .implementation(ViewScopeVo.class)
+                    )
+            )
             .build();
+    }
+
+    private Mono<ServerResponse> getViewScope(ServerRequest request) {
+        return viewScopeService.getViewScope()
+            .flatMap(viewScope -> ServerResponse.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(viewScope)
+            );
     }
 
 

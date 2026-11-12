@@ -6,6 +6,7 @@ import MomentEdit from "@/components/MomentEdit.vue";
 import MomentItem from "@/components/MomentItem.vue";
 import TagFilterDropdown from "@/components/TagFilterDropdown.vue";
 import { usePluginShikiScriptLoader } from "@/plugin-supports/shiki/use-plugin-shiki-script-loader";
+import { axiosInstance } from "@halo-dev/api-client";
 import {
   IconExternalLinkLine,
   VButton,
@@ -18,7 +19,20 @@ import { utils } from "@halo-dev/ui-shared";
 import { useQuery } from "@tanstack/vue-query";
 import { useRouteQuery } from "@vueuse/router";
 import { computed, provide, ref, watch } from "vue";
+import { useRouter } from "vue-router";
 import MingcuteMomentsLine from "~icons/mingcute/moment-line";
+
+interface ViewScopeVo {
+  enabled: boolean;
+  mode: string;
+  count?: number;
+  since?: string;
+  rangeValue?: number;
+  rangeUnit?: string;
+  startTime?: string;
+  restricted: boolean;
+  text: string;
+}
 
 const tag = useRouteQuery<string>("tag");
 const selectedApprovedStatus = useRouteQuery<string | undefined, boolean | undefined>(
@@ -31,6 +45,31 @@ const selectedApprovedStatus = useRouteQuery<string | undefined, boolean | undef
     },
   }
 );
+
+/**
+ * 排序字段使用索引全路径，与后端 SortableRequest 的解析规则一致。
+ * 默认发布时间倒序，与后端未传 sort 时的兜底排序保持一致。
+ */
+const sortBy = useRouteQuery<string>("sort", "spec.releaseTime,desc");
+
+const sortItems = [
+  {
+    label: "发布时间倒序",
+    value: "spec.releaseTime,desc",
+  },
+  {
+    label: "发布时间升序",
+    value: "spec.releaseTime,asc",
+  },
+  {
+    label: "创建时间倒序",
+    value: "metadata.creationTimestamp,desc",
+  },
+  {
+    label: "创建时间升序",
+    value: "metadata.creationTimestamp,asc",
+  },
+];
 
 const page = ref(1);
 const size = ref(20);
@@ -75,6 +114,7 @@ const {
     endDate,
     keyword,
     tag,
+    sortBy,
   ],
   queryFn: async () => {
     const { data } = await momentsConsoleApiClient.moment.listMoments({
@@ -85,6 +125,7 @@ const {
       startDate: startDate.value,
       endDate: endDate.value,
       tag: tag.value,
+      sort: [sortBy.value],
     });
 
     total.value = data.total;
@@ -111,13 +152,33 @@ provide("tag", {
   updateTagQuery,
 });
 
-watch([tag, selectedApprovedStatus, momentsRangeTime], () => {
+watch([tag, selectedApprovedStatus, momentsRangeTime, sortBy], () => {
   page.value = 1;
   size.value = 20;
 });
 
 const handleJumpToFrontDesk = () => {
   window.open("/moments", "_blank");
+};
+
+const router = useRouter();
+
+/**
+ * 未登录访客的展示范围来自插件设置，这里只做展示，不提供编辑。
+ */
+const { data: viewScope } = useQuery<ViewScopeVo>({
+  queryKey: ["plugin:moments:view-scope"],
+  queryFn: async () => {
+    const { data } = await axiosInstance.get<ViewScopeVo>(
+      "/apis/api.moment.halo.run/v1alpha1/view-scope"
+    );
+    return data;
+  },
+  refetchOnWindowFocus: false,
+});
+
+const handleOpenViewScopeSetting = () => {
+  router.push("/plugins/PluginMoments");
 };
 
 usePluginShikiScriptLoader();
@@ -162,12 +223,27 @@ usePluginShikiScriptLoader();
                   },
                 ]"
               />
+              <FilterDropdown v-model="sortBy" label="排序" :items="sortItems" :clearable="false" />
             </div>
 
             <div class=":uno: right-0 flex !ml-0">
               <DateRangeFilter v-model="momentsRangeTime" />
             </div>
           </div>
+        </div>
+
+        <div
+          v-if="viewScope?.enabled && viewScope.text"
+          class=":uno: flex items-center justify-between gap-3 rounded-md bg-gray-100 px-3 py-2 text-xs text-gray-500"
+        >
+          <span class=":uno: truncate">未登录访客：{{ viewScope.text }}</span>
+          <button
+            type="button"
+            class=":uno: shrink-0 cursor-pointer text-gray-500 hover:text-gray-900"
+            @click="handleOpenViewScopeSetting"
+          >
+            调整
+          </button>
         </div>
 
         <VLoading v-if="isLoading" />

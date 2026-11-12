@@ -10,11 +10,12 @@ import run.halo.app.extension.router.selector.FieldSelector;
 import run.halo.app.infra.AnonymousUserConst;
 
 import java.security.Principal;
+import java.time.Instant;
 import java.util.function.Predicate;
 
 import static run.halo.app.extension.index.query.Queries.and;
-import static run.halo.app.extension.index.query.Queries.empty;
 import static run.halo.app.extension.index.query.Queries.equal;
+import static run.halo.app.extension.index.query.Queries.greaterThan;
 import static run.halo.app.extension.index.query.Queries.isNull;
 import static run.halo.app.extension.index.query.Queries.or;
 
@@ -26,6 +27,12 @@ import static run.halo.app.extension.index.query.Queries.or;
 @Component
 public class DefaultQueryMomentPredicateResolver implements ReactiveQueryMomentPredicateResolver {
 
+    private final AnonymousViewScopeService viewScopeService;
+
+    public DefaultQueryMomentPredicateResolver(AnonymousViewScopeService viewScopeService) {
+        this.viewScopeService = viewScopeService;
+    }
+
     @Override
     public Mono<Predicate<Moment>> getPredicate() {
         Predicate<Moment> predicate = moment -> moment.isApproved()
@@ -35,7 +42,9 @@ public class DefaultQueryMomentPredicateResolver implements ReactiveQueryMomentP
             .map(username -> predicate.and(
                 visiblePredicate.or(moment -> username.equals(moment.getSpec().getOwner())))
             )
-            .defaultIfEmpty(predicate.and(visiblePredicate));
+            .switchIfEmpty(Mono.defer(() -> viewScopeService.resolveStartTime()
+                .map(startTime -> predicate.and(visiblePredicate).and(inScope(startTime)))
+                .defaultIfEmpty(predicate.and(visiblePredicate))));
     }
 
     @Override
@@ -50,11 +59,24 @@ public class DefaultQueryMomentPredicateResolver implements ReactiveQueryMomentP
             .map(username -> and(fieldQuery,
                 or(visibleQuery, equal("spec.owner", username)))
             )
-            .defaultIfEmpty(and(fieldQuery, visibleQuery))
+            .switchIfEmpty(Mono.defer(() -> viewScopeService.resolveStartTime()
+                .map(startTime -> and(and(fieldQuery, visibleQuery),
+                    greaterThan("spec.releaseTime", startTime.toString(), true)))
+                .defaultIfEmpty(and(fieldQuery, visibleQuery))))
             .map(query -> {
                 listOptions.setFieldSelector(FieldSelector.of(query));
                 return listOptions;
             });
+    }
+
+    /**
+     * 未登录访客的范围判定：发布时间不早于范围起点。
+     */
+    private static Predicate<Moment> inScope(Instant startTime) {
+        return moment -> {
+            Instant releaseTime = moment.getSpec().getReleaseTime();
+            return releaseTime != null && !releaseTime.isBefore(startTime);
+        };
     }
 
     Mono<String> currentUserName() {

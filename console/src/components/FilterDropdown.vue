@@ -10,9 +10,15 @@ const props = withDefaults(
     }[];
     label: string;
     modelValue?: string | boolean | number;
+    /**
+     * 是否允许清空当前选择。排序等「必须始终有值」的场景需要关掉，
+     * 否则再次点击已选项会把值置空。
+     */
+    clearable?: boolean;
   }>(),
   {
     modelValue: undefined,
+    clearable: true,
   }
 );
 
@@ -25,7 +31,7 @@ const selectedItem = computed(() => {
 });
 
 function handleSelect(item: { label: string; value?: string | boolean | number }) {
-  if (item.value === props.modelValue) {
+  if (props.clearable && item.value === props.modelValue) {
     emit("update:modelValue", undefined);
     return;
   }
@@ -51,9 +57,11 @@ const handleClear = (event: Event) => {
       </span>
       <span v-else class=":uno: mr-0.5"> {{ label }}：{{ selectedItem.label }} </span>
       <span class=":uno: text-base">
-        <IconArrowDown :class="{ ':uno: group-hover:hidden': modelValue !== undefined }" />
+        <IconArrowDown
+          :class="{ ':uno: group-hover:hidden': clearable && modelValue !== undefined }"
+        />
         <IconClose
-          v-if="modelValue !== undefined"
+          v-if="clearable && modelValue !== undefined"
           class=":uno: hidden group-hover:block"
           @click="handleClear"
         />

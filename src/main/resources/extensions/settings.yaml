@@ -17,3 +17,47 @@ spec:
           name: pageSize
           validation: required|Number
           value: 10
+    - group: viewScope
+      label: 未登录展示范围
+      formSchema:
+        - $formkit: select
+          label: 限制方式
+          name: mode
+          value: NONE
+          options:
+            - label: 不限制
+              value: NONE
+            - label: 按数量
+              value: COUNT
+            - label: 按时间节点
+              value: SINCE
+            - label: 按时间范围
+              value: RANGE
+          help: 仅作用于未登录访客，登录用户（含作者本人）不受影响。修改后立即生效，且不会改动瞬间的公开/私密状态。
+        - $formkit: number
+          label: 查看数量
+          name: count
+          value: 20
+          min: 1
+          help: 仅「按数量」模式生效：未登录访客最多能看到最近发布的 N 条瞬间。
+        - $formkit: date
+          label: 时间节点
+          name: since
+          help: 仅「按时间节点」模式生效：只展示该日期（00:00 起）之后发布的瞬间。
+        - $formkit: number
+          label: 时间范围数值
+          name: rangeValue
+          value: 3
+          min: 1
+          help: 仅「按时间范围」模式生效。
+        - $formkit: select
+          label: 时间范围单位
+          name: rangeUnit
+          value: MONTH
+          options:
+            - label: 天
+              value: DAY
+            - label: 月
+              value: MONTH
+            - label: 年
+              value: YEAR

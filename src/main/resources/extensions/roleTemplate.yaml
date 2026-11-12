@@ -16,6 +16,9 @@ rules:
   - apiGroups: ["console.api.moment.halo.run"]
     resources: ["moments", "tags"]
     verbs: ["get", "list"]
+  - apiGroups: ["api.moment.halo.run"]
+    resources: ["view-scope"]
+    verbs: ["get"]
 ---
 apiVersion: v1alpha1
 kind: Role
@@ -96,3 +99,6 @@ rules:
   - apiGroups: [ "api.moment.halo.run" ]
     resources: [ "moments" ]
     verbs: [ "get", "list" ]
+  - apiGroups: [ "api.moment.halo.run" ]
+    resources: [ "view-scope" ]
+    verbs: [ "get" ]
