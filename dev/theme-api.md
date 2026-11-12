@@ -22,6 +22,7 @@
 | ---- | ---- | ---- |
 | `moments` | `UrlContextListResult<MomentVo>` | 当前页瞬间分页结果 |
 | `tags` | `List<MomentTagVo>` | 所有标签列表 |
+| `viewScope` | `ViewScope` | 未登录访客的展示范围，见[类型定义](#viewscope) |
 
 `tags` 示例：
 
@@ -65,6 +66,13 @@
 </div>
 ```
 
+`viewScope` 示例（只在访客确实受限时渲染）：
+
+```html
+<p th:if="${viewScope != null and viewScope.restricted}" th:text="${viewScope.text}"></p>
+<!-- 输出：作者只展示最近 20 条瞬间 / 作者只展示最近 3 个月内的瞬间 -->
+```
+
 ---
 
 ### 详情页面 /moments/{name}
@@ -72,11 +80,14 @@
 - 模板路径：`/templates/moment.html`
 - 访问路径：`/moments/{name}`
 
+> 当瞬间超出未登录展示范围时，该路由直接返回 **404**（正文为内置提示页），不会进入主题模板。登录用户不受影响。
+
 #### 模板变量
 
 | 变量 | 类型 | 说明 |
 | ---- | ---- | ---- |
 | `moment` | `MomentVo` | 当前瞬间 |
+| `viewScope` | `ViewScope` | 未登录访客的展示范围，见[类型定义](#viewscope) |
 
 示例：
 
@@ -108,6 +119,8 @@
 ## Finder API
 
 Finder API 由 `momentFinder` 对象提供，可在主题模板的任意位置使用，无需依赖路由页面。
+
+> 所有 Finder 方法对**未登录访客**都会自动应用「未登录展示范围」，因此 `listAll()`、`list()`、`listByTag()`、`listAllTags()` 的结果与列表页保持一致；登录用户不受限制。
 
 ### listAll()
 
@@ -314,3 +327,32 @@ enum MomentMediaType {
     "momentCount": 0
 }
 ```
+
+### ViewScope
+
+未登录访客的展示范围。字段含义见 [REST API 文档](./rest-api.md#查询展示范围)。
+
+```json
+{
+    "enabled": true,
+    "mode": "COUNT",
+    "count": 20,
+    "since": "2026-01-01T00:00:00Z",
+    "rangeValue": 3,
+    "rangeUnit": "MONTH",
+    "startTime": "2026-08-13T00:00:00Z",
+    "restricted": true,
+    "text": "作者只展示最近 20 条瞬间"
+}
+```
+
+| 字段 | 说明 |
+| ---- | ---- |
+| `enabled` | 是否配置了展示范围，与访客身份无关 |
+| `mode` | `NONE` / `COUNT` / `SINCE` / `RANGE`，只有对应模式的字段有意义 |
+| `count` | `COUNT` 模式的条数 |
+| `since` | `SINCE` 模式的起始节点 |
+| `rangeValue` / `rangeUnit` | `RANGE` 模式的数值与单位（`DAY` / `MONTH` / `YEAR`） |
+| `startTime` | 实际生效的起始时间，`COUNT` 模式下为第 N 条瞬间的发布时间 |
+| `restricted` | 当前访客是否真的受限，登录用户恒为 `false` |
+| `text` | 可直接渲染的提示文案，`enabled` 为 `false` 时为空字符串 |

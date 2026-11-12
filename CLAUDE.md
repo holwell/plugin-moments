@@ -72,6 +72,8 @@ The backend follows the **Halo 2.0 Plugin API** and uses **reactive programming*
 
 **Finder API** (`MomentFinder`): provides Thymeleaf template variables for themes (`momentFinder.listAll()`, `momentFinder.list(page, size)`, etc.).
 
+**Anonymous view scope:** `AnonymousViewScopeService` derives a per-request visibility window from the `viewScope` setting group (`NONE` / `COUNT` / `SINCE` / `RANGE`). It **never writes** `spec.visible` — the conditions are merged in `DefaultQueryMomentPredicateResolver.getPredicate()` and `getListOptions()`, so list API, detail API, detail page, RSS and Finder are all filtered for anonymous requests, and changing the setting takes effect immediately without touching stored data. `COUNT` mode resolves the Nth newest moment's `releaseTime` as the cutoff so pagination totals stay consistent. The scope is exposed to themes as the `viewScope` template variable and via `GET api.moment.halo.run/v1alpha1/view-scope` (`restricted` tells the caller whether *this* request is actually limited).
+
 **Integrations:**
 - **RSS**: `MomentRssProvider` implements `RssRouteItem` from the feed plugin (optional dependency `PluginFeed >= 1.4.0`).
 - **Search**: `MomentHaloDocumentsProvider` indexes moments into Halo's search system with type `moment.moment.halo.run`.
