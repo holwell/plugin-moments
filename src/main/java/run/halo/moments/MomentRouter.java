@@ -11,7 +11,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.HandlerFunction;
 import org.springframework.web.reactive.function.server.RouterFunction;
@@ -42,40 +41,6 @@ import run.halo.moments.vo.MomentVo;
 public class MomentRouter {
     private static final String TAG_PARAM = "tag";
 
-    /**
-     * 超出展示范围的瞬间对未登录访客返回 404：状态码交给搜索引擎，正文交给访客。
-     */
-    private static final String OUT_OF_SCOPE_HTML = """
-        <!doctype html>
-        <html lang="zh-CN">
-          <head>
-            <meta charset="utf-8" />
-            <meta name="viewport" content="width=device-width, initial-scale=1" />
-            <title>瞬间不可见</title>
-            <style>
-              body { margin: 0; min-height: 100vh; display: flex; align-items: center;
-                justify-content: center; font-family: system-ui, -apple-system, sans-serif;
-                color: #27272a; background: #fafafa; }
-              main { max-width: 28rem; padding: 2rem; text-align: center; }
-              h1 { font-size: 1.25rem; margin: 0 0 0.75rem; }
-              p { margin: 0 0 0.5rem; color: #71717a; font-size: 0.875rem; line-height: 1.6; }
-              a { color: #2563eb; font-size: 0.875rem; text-decoration: none; }
-              @media (prefers-color-scheme: dark) {
-                body { color: #f4f4f5; background: #18181b; }
-                p { color: #a1a1aa; }
-              }
-            </style>
-          </head>
-          <body>
-            <main>
-              <h1>该瞬间不在展示范围内</h1>
-              <p>作者设置了仅展示部分瞬间，这条瞬间对未登录访客不可见。</p>
-              <p><a href="/moments">返回瞬间列表</a></p>
-            </main>
-          </body>
-        </html>
-        """;
-
     private final MomentFinder momentFinder;
 
     private final ReactiveSettingFetcher settingFetcher;
@@ -93,16 +58,33 @@ public class MomentRouter {
     private HandlerFunction<ServerResponse> handlerMomentDefault() {
         return request -> {
             String momentName = request.pathVariable("momentName");
-            return templateNameResolver.resolveTemplateNameOrDefault(request.exchange(), "moment")
-                .flatMap(templateName -> momentFinder.get(momentName)
-                    .flatMap(moment -> ServerResponse.ok().render(templateName, Map.of(
-                        "moment", moment,
-                        ModelConst.TEMPLATE_ID, "moment",
-                        "title", getMomentTitle(),
-                        "viewScope", viewScopeService.getViewScope()
-                    )))
-                    .switchIfEmpty(Mono.defer(MomentRouter::outOfScopeResponse)));
+            return momentFinder.get(momentName)
+                .flatMap(moment -> renderMoment(request, moment))
+                .switchIfEmpty(Mono.defer(() -> renderHidden(request)));
         };
+    }
+
+    private Mono<ServerResponse> renderMoment(ServerRequest request, MomentVo moment) {
+        return templateNameResolver.resolveTemplateNameOrDefault(request.exchange(), "moment")
+            .flatMap(templateName -> ServerResponse.ok().render(templateName, Map.of(
+                "moment", moment,
+                ModelConst.TEMPLATE_ID, "moment",
+                "title", getMomentTitle(),
+                "viewScope", viewScopeService.getViewScope()
+            )));
+    }
+
+    /**
+     * 超出展示范围（或已删除）的瞬间：状态码仍是 404，但正文走主题的 moment-hidden 模板，
+     * 从而保留站点布局，只替换内容区。主题可提供自己的 templates/moment-hidden.html 覆盖。
+     */
+    private Mono<ServerResponse> renderHidden(ServerRequest request) {
+        return ServerResponse.status(HttpStatus.NOT_FOUND)
+            .render("moment-hidden", Map.of(
+                ModelConst.TEMPLATE_ID, "moment",
+                "title", getMomentTitle(),
+                "viewScope", viewScopeService.getViewScope()
+            ));
     }
 
     private HandlerFunction<ServerResponse> handlerFunction() {
@@ -115,12 +97,6 @@ public class MomentRouter {
             return templateNameResolver.resolveTemplateNameOrDefault(request.exchange(), "moments")
                 .flatMap(templateName -> ServerResponse.ok().render(templateName, model));
         };
-    }
-
-    private static Mono<ServerResponse> outOfScopeResponse() {
-        return ServerResponse.status(HttpStatus.NOT_FOUND)
-            .contentType(MediaType.TEXT_HTML)
-            .bodyValue(OUT_OF_SCOPE_HTML);
     }
 
     Mono<String> getMomentTitle() {

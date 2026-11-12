@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
@@ -193,7 +194,8 @@ public class AnonymousViewScopeService {
                 case "YEAR" -> ChronoUnit.YEARS;
                 default -> ChronoUnit.MONTHS;
             };
-            return Instant.now().minus(rangeValue, unit);
+            // Instant 只支持时间单位（天/时/分/秒），不支持月与年，必须先转成带时区的日期时间再减
+            return ZonedDateTime.now(ZoneId.systemDefault()).minus(rangeValue, unit).toInstant();
         }
 
         String text() {

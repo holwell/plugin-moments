@@ -1,0 +1,29 @@
+<!doctype html>
+<html
+  xmlns:th="https://www.thymeleaf.org"
+  th:replace="~{layout :: html(head = ~{::head}, content = ~{::content})}"
+>
+  <th:block th:fragment="head">
+    <title th:text="|${title} - ${site.title}|">瞬间</title>
+    <style>
+      .moment-hidden { padding: 3rem 0; }
+      .moment-hidden h1 { font-size: 1.125rem; margin: 0 0 0.75rem; }
+      .moment-hidden p { margin: 0 0 0.5rem; opacity: 0.7; }
+      .moment-hidden a { display: inline-block; margin-top: 1.25rem; color: inherit; }
+    </style>
+  </th:block>
+
+  <th:block th:fragment="content">
+    <section class="moment-hidden">
+      <h1>该瞬间不在展示范围内</h1>
+      <p
+        th:if="${viewScope != null and viewScope.restricted}"
+        th:text="${viewScope.text}"
+      ></p>
+      <p th:unless="${viewScope != null and viewScope.restricted}">
+        这条瞬间可能已被删除。
+      </p>
+      <a th:href="@{/moments}">返回瞬间列表</a>
+    </section>
+  </th:block>
+</html>
