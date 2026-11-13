@@ -35,6 +35,8 @@ public class MomentQueryEndpoint implements CustomEndpoint {
 
     private final AnonymousViewScopeService viewScopeService;
 
+    private final MomentLocationPrivacy locationPrivacy;
+
     @Override
     public RouterFunction<ServerResponse> endpoint() {
         final var tag = "api.moment.halo.run/v1alpha1/Moment";
@@ -95,7 +97,14 @@ public class MomentQueryEndpoint implements CustomEndpoint {
 
     private Mono<ServerResponse> listMoments(ServerRequest request) {
         MomentPublicQuery query = new MomentPublicQuery(request.exchange());
-        return momentPublicQueryService.list(query.toListOptions(), query.toPageRequest())
+        var listOptions = query.toListOptions();
+        // 只有按位置筛的时候才追加可见条件：无条件加会把「没填位置」的瞬间也挡掉，
+        // 而这里要挡的只是「位置填了但设成私密」的那些
+        var options = query.hasLocationFilter()
+            ? locationPrivacy.restrictLocationQuery(listOptions)
+            : Mono.just(listOptions);
+        return options
+            .flatMap(opts -> momentPublicQueryService.list(opts, query.toPageRequest()))
             .flatMap(result -> ServerResponse.ok().contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(result)
             );

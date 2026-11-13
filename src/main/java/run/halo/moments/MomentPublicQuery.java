@@ -62,6 +62,14 @@ public class MomentPublicQuery extends SortableRequest {
         return StringUtils.defaultIfBlank(queryParams.getFirst("place"), null);
     }
 
+    /**
+     * 这次查询是否按位置筛选。匿名请求要据此追加「位置对外可见」的条件，
+     * 否则筛选结果本身就成了一把尺子。
+     */
+    public boolean hasLocationFilter() {
+        return StringUtils.isNotBlank(getRegion()) || StringUtils.isNotBlank(getPlace());
+    }
+
     @Schema
     public Instant getStartDate() {
         String startDate = queryParams.getFirst("startDate");

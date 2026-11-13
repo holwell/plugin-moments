@@ -27,6 +27,7 @@ import run.halo.app.extension.router.selector.FieldSelector;
 import run.halo.app.infra.utils.JsonUtils;
 import run.halo.app.theme.finders.Finder;
 import run.halo.moments.Moment;
+import run.halo.moments.MomentLocationPrivacy;
 import run.halo.moments.ReactiveQueryMomentPredicateResolver;
 import run.halo.moments.finders.MomentFinder;
 import run.halo.moments.finders.MomentPublicQueryService;
@@ -49,6 +50,8 @@ public class MomentFinderImpl implements MomentFinder {
 
     private final ReactiveQueryMomentPredicateResolver momentPredicateResolver;
 
+    private final MomentLocationPrivacy locationPrivacy;
+
     @Override
     public Flux<MomentVo> listAll() {
         return momentPredicateResolver.getListOptions()
@@ -69,7 +72,13 @@ public class MomentFinderImpl implements MomentFinder {
         var query = Optional.ofNullable(params)
             .map(map -> JsonUtils.mapToObject(map, MomentQuery.class))
             .orElseGet(MomentQuery::new);
-        return momentPublicQueryService.list(query.toListOptions(), query.toPageRequest());
+        // 主题的 ?region= / ?place= 走的就是这条路。匿名访客按位置筛时，
+        // 必须同时要求位置对外可见，否则「筛出几条」本身就是答案
+        var listOptions = query.toListOptions();
+        var options = query.hasLocationFilter()
+            ? locationPrivacy.restrictLocationQuery(listOptions)
+            : Mono.just(listOptions);
+        return options.flatMap(opts -> momentPublicQueryService.list(opts, query.toPageRequest()));
     }
 
     static Sort defaultSort() {
@@ -186,6 +195,10 @@ public class MomentFinderImpl implements MomentFinder {
         public PageRequest toPageRequest() {
             return PageRequestImpl.of(pageNullSafe(getPage()),
                 sizeNullSafe(getSize()), SortUtils.resolve(sort).and(defaultSort()));
+        }
+
+        boolean hasLocationFilter() {
+            return StringUtils.isNotBlank(region) || StringUtils.isNotBlank(place);
         }
     }
 }

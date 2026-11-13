@@ -55,6 +55,13 @@ public class MomentsPlugin extends BasePlugin {
                 .indexFunc(moment -> Optional.ofNullable(moment.getSpec().getLocation())
                     .map(Moment.MomentLocation::getPlace)
                     .orElse(null)));
+            // 位置的对外可见性：匿名按位置筛选时要靠它把「设成私密」的位置挡在外面，
+            // 否则筛选结果的条数就能反推位置。没填位置的瞬间取不到值，索引会跳过。
+            indexSpecs.add(
+                IndexSpecs.<Moment, Boolean>single("spec.location.visible", Boolean.class)
+                    .indexFunc(moment -> Optional.ofNullable(moment.getSpec().getLocation())
+                        .map(Moment.MomentLocation::getVisible)
+                        .orElse(null)));
             indexSpecs.add(
                 IndexSpecs.<Moment, Boolean>single(
                         Moment.REQUIRE_SYNC_ON_STARTUP_INDEX_NAME, Boolean.class)

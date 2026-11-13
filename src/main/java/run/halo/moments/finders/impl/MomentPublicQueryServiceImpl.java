@@ -12,6 +12,7 @@ import run.halo.app.extension.ListResult;
 import run.halo.app.extension.PageRequest;
 import run.halo.app.extension.ReactiveExtensionClient;
 import run.halo.moments.Moment;
+import run.halo.moments.MomentLocationPrivacy;
 import run.halo.moments.ReactiveQueryMomentPredicateResolver;
 import run.halo.moments.Stats;
 import run.halo.moments.finders.MomentPublicQueryService;
@@ -29,6 +30,8 @@ public class MomentPublicQueryServiceImpl implements MomentPublicQueryService {
     private final UserService userService;
 
     private final ReactiveQueryMomentPredicateResolver momentPredicateResolver;
+
+    private final MomentLocationPrivacy locationPrivacy;
 
     @Override
     public Mono<ListResult<MomentVo>> list(ListOptions queryOptions, PageRequest page) {
@@ -74,7 +77,10 @@ public class MomentPublicQueryServiceImpl implements MomentPublicQueryService {
                     .doOnNext(mv::setOwner)
                     .thenReturn(mv);
             })
-            .defaultIfEmpty(momentVo);
+            .defaultIfEmpty(momentVo)
+            // 对外接口和主题 finder 共用这里，位置脱敏放在最后一环，
+            // 免得漏掉某条调用路径
+            .flatMap(locationPrivacy::mask);
     }
 
     private Mono<Stats> populateStats(MomentVo momentVo) {
