@@ -1,0 +1,8 @@
+# shell 脚本必须保持 LF：Windows 检出时如果被换成 CRLF，
+# bash 会把每行末尾的 \r 当成命令的一部分，报 "$'\r': command not found"。
+gradlew text eol=lf
+*.sh text eol=lf
+
+# 这两个反过来，必须 CRLF，否则 Windows 的 cmd 解析会出问题。
+*.bat text eol=crlf
+*.cmd text eol=crlf

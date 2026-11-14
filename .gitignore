@@ -75,6 +75,9 @@ application-local.yml
 application-local.yaml
 application-local.properties
 
+### 本地工作区数据（编辑器会话、日志等），不入库
+.workbuddy-ai/
+
 /console/build/
 /workplace/
 /src/main/resources/console/
