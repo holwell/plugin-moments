@@ -96,7 +96,9 @@ public class CommentNotificationReasonPublisher {
                     .momentCreatedAt(
                         DEFAULT_DATE_FORMATTER.format(moment.getMetadata().getCreationTimestamp()))
                     .momentHtmlContent(cleanHtmlTag(momentContent.getHtml(), Safelist.basic()))
-                    .momentRawContent(cleanHtmlTag(momentContent.getRaw(), Safelist.simpleText()))
+                    // raw 现在存的是 Markdown，按 HTML 洗会漏出 ** 和 # 这些符号；
+                    // html 是渲染结果，洗成纯文本正好
+                    .momentRawContent(cleanHtmlTag(momentContent.getHtml(), Safelist.simpleText()))
                     .momentUrl(momentUrl)
                     .commenter(owner.getDisplayName())
                     .content(comment.getSpec().getContent())

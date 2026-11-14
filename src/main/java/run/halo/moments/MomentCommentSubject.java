@@ -37,8 +37,10 @@ class MomentCommentSubject implements CommentSubject<Moment> {
     @Override
     public Mono<SubjectDisplay> getSubjectDisplay(String name) {
         return get(name).map(moment -> {
+            // 摘要用 html 而不是 raw：raw 是 Markdown，Jsoup 洗不掉 ** 和 #，
+            // 摘要里会直接露出这些符号
             var content = Optional.ofNullable(moment.getSpec().getContent())
-                .map(Moment.MomentContent::getRaw)
+                .map(Moment.MomentContent::getHtml)
                 .map(raw -> Jsoup.clean(raw, Safelist.none()))
                 .map(raw -> raw.length() > 100 ? raw.substring(0, 100) : raw)
                 .orElse(name);
